@@ -1,30 +1,65 @@
+from contextlib import nullcontext
 import pretty_midi
 import sys
 import os
 import errno
 
-def main():
+class MultipleTrackException(Exception):
+    pass
+
+class Midi2ElliniaStar:
+
+    converted_text = ""
     drift = 0
-    src_path = sys.argv[1]
-    if not os.path.exists(src_path):
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), src_path)
-    midi_obj = pretty_midi.PrettyMIDI(src_path)
-    end_time = midi_obj.get_end_time()
-    midi_tracks = midi_obj.instruments
-    print("#TITLE:")
-    print("#MP3:song.ogg")
-    print("#COVER:cover.png")
-    print("#BACKGROUND:cover.png")
-    print("#VIDEO:video.mp4")
-    print("#BPM:150")
-    for track in midi_tracks:
-        notes = track.notes
-        for i in range(len(notes)):
-            if i > 0:
-                if notes[i].start - notes[i-1].end > 0.2:
-                    print("- " + str((notes[i-1].end - drift) * 10))
-            print(": " + str((notes[i].start - drift) * 10) + " " + str(notes[i].duration * 10) + " " + str(notes[i].pitch - 48))
-    print("E")
+    midi_obj = None
+    midi_tracks = None
+
+    # Constructor
+    def __init__(self, src_path):
+        if not os.path.exists(src_path):
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), src_path)
+        self.midi_obj = pretty_midi.PrettyMIDI(src_path)
+
+    def convert(self) -> str:
+        self.midi_tracks = self.midi_obj.instruments
+        # Execute convert
+        self.__create_ellinia_string()
+        return self.converted_text
+
+    def __create_ellinia_string(self):
+        self.__create_header()
+        self.__create_body()
+        self.__create_footer()
+
+    def __create_header(self):
+        header_key_values = [
+            "#TITLE:", 
+            "#MP3:song.ogg", 
+            "#COVER:cover.png",
+            "#BACKGROUND:cover.png",
+            "#VIDEO:video.mp4",
+            "#BPM:150"
+        ]
+        header_text = '\n'.join(header_key_values)
+        self.converted_text += header_text + '\n'
+
+    # Create score text
+    def __create_body(self):
+        for track in self.midi_tracks:
+            notes = track.notes
+            for i in range(len(notes)):
+                if i > 0:
+                    if notes[i].start - notes[i-1].end > 0.2:
+                        self.converted_text += "- " + str((notes[i-1].end - self.drift) * 10) + "\n"
+                self.converted_text += ": " + str((notes[i].start - self.drift) * 10) + " " + str(notes[i].duration * 10) + " " + str(notes[i].pitch - 48) + "\n"
+
+    def __create_footer(self):
+        self.converted_text.join("E")
+
+def main():
+    converter = Midi2ElliniaStar(sys.argv[1])
+    result = converter.convert()
+    print(result)
 
 if __name__ == '__main__':
     main()
