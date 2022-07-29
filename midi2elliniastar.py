@@ -3,6 +3,9 @@ import os
 import errno
 import argparse
 
+class MultipleTrackException(Exception):
+    pass
+
 class Midi2ElliniaStar:
     FIRST_NOTENUM = 0
     PAGE_CHANGE_DELTA = 0.2
@@ -10,17 +13,23 @@ class Midi2ElliniaStar:
     ELLINIA_NOTETIME_RATIO = 10
 
     # Constructor
-    def __init__(self, src_path, offset):
+    def __init__(self, src_path, offset, track_number):
         if not os.path.exists(src_path):
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), src_path)
         self.midi_obj = pretty_midi.PrettyMIDI(src_path)
         self.converted_text = ""
         self.offset = offset
         self.title = os.path.splitext(os.path.basename(src_path))[0]
-        self.midi_tracks = None
+        self.track_number = track_number
 
     def convert(self) -> str:
-        self.midi_tracks = self.midi_obj.instruments
+        midi_tracks = self.midi_obj.instruments
+        if len(midi_tracks) != 1 and self.track_number == 0:
+            raise MultipleTrackException("\n\nThis MIDI File has multiple tracks.\nPlease specify track number by '-n <TRACK_NUMBER>'.")
+        if self.track_number == 0:
+            self.track = midi_tracks[0]
+        else:
+            self.track = midi_tracks[self.track_number - 1]
         # Execute convert
         self.__create_ellinia_string()
         return self.converted_text
@@ -46,17 +55,16 @@ class Midi2ElliniaStar:
 
     # Create score text
     def __create_body(self):
-        for track in self.midi_tracks:
-            notes = track.notes
-            for i in range(len(notes)):
-                note = notes[i]
-                # Page Change check
-                if i > self.FIRST_NOTENUM:
-                    previous_note = notes[i-1]
-                    if self.__is_page_change(note, previous_note):
-                        self.converted_text += self.__rest_text(previous_note) + "\n"
-                # Add note
-                self.converted_text += self.__note_text(note) + "\n"
+        notes = self.track.notes
+        for i in range(len(notes)):
+            note = notes[i]
+            # Page Change check
+            if i > self.FIRST_NOTENUM:
+                previous_note = notes[i-1]
+                if self.__is_page_change(note, previous_note):
+                    self.converted_text += self.__rest_text(previous_note) + "\n"
+            # Add note
+            self.converted_text += self.__note_text(note) + "\n"
 
     # Checks if the guide-melody bar page can be changed
     def __is_page_change(self, note, previous_note) -> bool:
@@ -91,12 +99,15 @@ def main():
     # Read arguments
     parser = argparse.ArgumentParser(description="Converts Standard MIDI File to Ellinia Star Deluxe score.")
     parser.add_argument('filename')
+    parser.add_argument('-n', '--track-number', type=int)
     parser.add_argument('-o', '--offset', type=float)
     args = parser.parse_args()
     if args.offset == None:
         args.offset = 0.0
+    if args.track_number == None:
+        args.track_number = 0
     # Convert
-    converter = Midi2ElliniaStar(args.filename, args.offset)
+    converter = Midi2ElliniaStar(args.filename, args.offset, args.track_number)
     result = converter.convert()
     # Write converted score
     with open(os.path.splitext(args.filename)[0] + ".txt", mode='w') as f:
