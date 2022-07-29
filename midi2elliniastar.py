@@ -1,10 +1,7 @@
 import pretty_midi
-import sys
 import os
 import errno
-
-class MultipleTrackException(Exception):
-    pass
+import argparse
 
 class Midi2ElliniaStar:
     FIRST_NOTENUM = 0
@@ -13,12 +10,13 @@ class Midi2ElliniaStar:
     ELLINIA_NOTETIME_RATIO = 10
 
     # Constructor
-    def __init__(self, src_path):
+    def __init__(self, src_path, offset):
         if not os.path.exists(src_path):
             raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), src_path)
         self.midi_obj = pretty_midi.PrettyMIDI(src_path)
         self.converted_text = ""
-        self.drift = 0
+        self.offset = offset
+        self.title = os.path.splitext(os.path.basename(src_path))[0]
         self.midi_tracks = None
 
     def convert(self) -> str:
@@ -36,7 +34,7 @@ class Midi2ElliniaStar:
     # Create header text
     def __create_header(self):
         header_key_values = [
-            "#TITLE:", 
+            "#TITLE:" + os.path.splitext(os.path.basename(self.title))[0], 
             "#MP3:song.ogg", 
             "#COVER:cover.png",
             "#BACKGROUND:cover.png",
@@ -77,7 +75,7 @@ class Midi2ElliniaStar:
         return ": " + str(start_in_ellinia) + " " + str(duration_in_ellinia) + " " + str(pitch_in_ellinia)
 
     def __ellinia_note_time(self, time) -> int:
-        return (time - self.drift) * self.ELLINIA_NOTETIME_RATIO
+        return (time - self.offset) * self.ELLINIA_NOTETIME_RATIO
 
     def __ellinia_note_duration(self, duration) -> int:
         return duration * self.ELLINIA_NOTETIME_RATIO
@@ -87,12 +85,22 @@ class Midi2ElliniaStar:
 
     # Create footer text
     def __create_footer(self):
-        self.converted_text += "E"
+        self.converted_text += "E" + "\n"
 
 def main():
-    converter = Midi2ElliniaStar(sys.argv[1])
+    # Read arguments
+    parser = argparse.ArgumentParser(description="Converts Standard MIDI File to Ellinia Star Deluxe score.")
+    parser.add_argument('filename')
+    parser.add_argument('-o', '--offset', type=float)
+    args = parser.parse_args()
+    if args.offset == None:
+        args.offset = 0.0
+    # Convert
+    converter = Midi2ElliniaStar(args.filename, args.offset)
     result = converter.convert()
-    print(result)
+    # Write converted score
+    with open(os.path.splitext(args.filename)[0] + ".txt", mode='w') as f:
+        f.write(result)
 
 if __name__ == '__main__':
     main()
