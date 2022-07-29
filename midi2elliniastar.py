@@ -1,4 +1,3 @@
-from contextlib import nullcontext
 import pretty_midi
 import sys
 import os
@@ -26,11 +25,13 @@ class Midi2ElliniaStar:
         self.__create_ellinia_string()
         return self.converted_text
 
+    # Create whole score-file text
     def __create_ellinia_string(self):
         self.__create_header()
         self.__create_body()
         self.__create_footer()
 
+    # Create header text
     def __create_header(self):
         header_key_values = [
             "#TITLE:", 
@@ -53,6 +54,7 @@ class Midi2ElliniaStar:
                         self.converted_text += "- " + str((notes[i-1].end - self.drift) * 10) + "\n"
                 self.converted_text += ": " + str((notes[i].start - self.drift) * 10) + " " + str(notes[i].duration * 10) + " " + str(notes[i].pitch - 48) + "\n"
 
+    # Create footer text
     def __create_footer(self):
         self.converted_text.join("E")
 
