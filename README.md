@@ -1,5 +1,5 @@
 # midi2elliniastar
-Converts Standard MIDI File to ElliniaStar Deluxe score
+Converts Standard MIDI File to ElliniaStar Deluxe score  
 Standard MIDI FileをElliniaStar Deluxeの譜面に変換します。
 
 ## Usage(EN)
