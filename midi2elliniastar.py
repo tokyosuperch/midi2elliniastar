@@ -110,7 +110,7 @@ def main():
     converter = Midi2ElliniaStar(args.filename, args.offset, args.track_number)
     result = converter.convert()
     # Write converted score
-    with open(os.path.splitext(args.filename)[0] + ".txt", mode='w') as f:
+    with open(os.path.splitext(args.filename)[0] + ".txt", mode='w', encoding='utf-8') as f:
         f.write(result)
 
 if __name__ == '__main__':
